@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+*.tfplan
+
+# dbt
+transform/target/
+transform/dbt_packages/
+transform/logs/
+logs/
+target/
+
+# Secrets and local env
+.env*
+
+# Local smoke-test output
+.lake-local/

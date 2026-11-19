@@ -1,0 +1,38 @@
+[project]
+name = "snapcount-lakehouse"
+version = "0.1.0"
+description = "NFL seasons from raw nflverse files to tested gold tables on AWS (S3, Athena, Iceberg, dbt)."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.13,<3.14"
+# The ingest package runs on the Lambda python3.13 runtime with the standard
+# library only (boto3 ships with the runtime), so it has no runtime deps.
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "boto3",
+    "pytest",
+    "ruff",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ingest/lake_ingest"]
+
+[tool.pytest.ini_options]
+testpaths = ["ingest/tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["lake_ingest"]
