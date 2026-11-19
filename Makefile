@@ -13,3 +13,9 @@ lint: ## ruff check + format check
 
 test-local: ## Python unit tests (no network, no AWS)
 	uv run pytest -q
+
+SEASON ?= 2025
+
+.PHONY: smoke
+smoke: ## Real nflverse download into ./.lake-local (network to GitHub; no AWS)
+	uv run python -m lake_ingest --season $(SEASON) --local .lake-local
