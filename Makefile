@@ -19,3 +19,12 @@ SEASON ?= 2025
 .PHONY: smoke
 smoke: ## Real nflverse download into ./.lake-local (network to GitHub; no AWS)
 	uv run python -m lake_ingest --season $(SEASON) --local .lake-local
+
+.PHONY: tf-check
+tf-check: ## terraform fmt/validate/test with a mocked provider (no AWS)
+	terraform fmt -check -recursive infra
+	terraform -chdir=infra/bootstrap init -backend=false -input=false >/dev/null
+	terraform -chdir=infra/bootstrap validate
+	terraform -chdir=infra/lake init -backend=false -input=false >/dev/null
+	terraform -chdir=infra/lake validate
+	terraform -chdir=infra/lake test
