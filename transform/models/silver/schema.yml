@@ -1,0 +1,136 @@
+version: 2
+
+models:
+  - name: stg_games
+    description: >
+      One row per game from the latest schedules ingest, seasons >= var('first_season').
+      Team codes mapped to snapcount's canonical set. status is 'scheduled' until both
+      scores exist.
+    columns:
+      - name: game_id
+        data_tests:
+          - not_null
+          - unique:
+              name: stg_games_one_row_per_game_id
+      - name: season
+        data_tests: [not_null]
+      - name: week
+        data_tests: [not_null]
+      - name: game_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["REG", "WC", "DIV", "CON", "SB"]
+      - name: kickoff_date
+        data_tests: [not_null]
+      - name: home_team
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('teams')
+                field: abbr
+      - name: away_team
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('teams')
+                field: abbr
+      - name: home_score
+      - name: away_score
+      - name: overtime
+      - name: status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["final", "scheduled"]
+
+  - name: stg_player_weeks
+    description: >
+      One row per (player_id, season, week, game_id): regular season only, no null-player
+      placeholder rows, latest ingest per season, team codes mapped.
+    data_tests:
+      - unique:
+          name: stg_player_weeks_one_row_per_player_game
+          arguments:
+            column_name: "player_id || '|' || cast(season as varchar) || '|' || cast(week as varchar) || '|' || game_id"
+    columns:
+      - name: player_id
+        data_tests: [not_null]
+      - name: season
+        data_tests: [not_null]
+      - name: week
+        data_tests: [not_null]
+      - name: game_id
+        data_tests: [not_null]
+      - name: team
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('teams')
+                field: abbr
+
+unit_tests:
+  - name: stg_games_maps_LA_to_LAR
+    description: Relocated teams' historical codes (LA, SD, OAK) map to the canonical 32.
+    model: stg_games
+    given:
+      - input: source('bronze', 'schedules')
+        rows:
+          - {game_id: "2016_01_LA_SF", season: 2016, week: 1, game_type: "REG", gameday: "2016-09-12", away_team: "LA", home_team: "SF", away_score: 0, home_score: 28, overtime: 0, ingest_date: "2026-11-19"}
+          - {game_id: "2016_02_SD_OAK", season: 2016, week: 2, game_type: "REG", gameday: "2016-09-18", away_team: "SD", home_team: "OAK", away_score: 27, home_score: 34, overtime: 1, ingest_date: "2026-11-19"}
+      - input: ref('team_abbr_map')
+        format: csv
+        rows: |
+          feed_abbr,abbr
+          LA,LAR
+          OAK,LV
+          SD,LAC
+    expect:
+      rows:
+        - {game_id: "2016_01_LA_SF", away_team: "LAR", home_team: "SF", status: "final", overtime: false}
+        - {game_id: "2016_02_SD_OAK", away_team: "LAC", home_team: "LV", status: "final", overtime: true}
+
+  - name: stg_games_reads_only_latest_ingest_and_marks_unplayed_scheduled
+    description: >
+      A re-ingest lands in a new ingest_date partition; silver reads only the newest, so a
+      game is never double-counted. Unplayed games (null scores) are 'scheduled'.
+    model: stg_games
+    given:
+      - input: source('bronze', 'schedules')
+        rows:
+          - {game_id: "2026_12_KC_DEN", season: 2026, week: 12, game_type: "REG", gameday: "2026-11-22", away_team: "KC", home_team: "DEN", away_score: null, home_score: null, overtime: null, ingest_date: "2026-11-12"}
+          - {game_id: "2026_12_KC_DEN", season: 2026, week: 12, game_type: "REG", gameday: "2026-11-22", away_team: "KC", home_team: "DEN", away_score: null, home_score: null, overtime: null, ingest_date: "2026-11-19"}
+          - {game_id: "2015_01_STL_SEA", season: 2015, week: 1, game_type: "REG", gameday: "2015-09-13", away_team: "STL", home_team: "SEA", away_score: 34, home_score: 31, overtime: 1, ingest_date: "2026-11-19"}
+      - input: ref('team_abbr_map')
+        format: csv
+        rows: |
+          feed_abbr,abbr
+          LA,LAR
+    expect:
+      rows:
+        - {game_id: "2026_12_KC_DEN", status: "scheduled", home_score: null, away_score: null, overtime: false}
+
+  - name: stg_player_weeks_drops_null_player_and_post
+    description: Postseason rows and null-player placeholder rows never reach silver.
+    model: stg_player_weeks
+    given:
+      - input: source('bronze', 'player_week')
+        rows:
+          - {player_id: "00-0033873", player_display_name: "Patrick Mahomes", position: "QB", team: "KC", week: 1, season: 2025, season_type: "REG", game_id: "2025_01_KC_LAC", passing_yards: 258, ingest_date: "2026-11-19"}
+          - {player_id: null, player_display_name: null, position: null, team: null, week: 1, season: 2025, season_type: "REG", game_id: "2025_01_KC_LAC", passing_yards: 0, ingest_date: "2026-11-19"}
+          - {player_id: "00-0033873", player_display_name: "Patrick Mahomes", position: "QB", team: "KC", week: 19, season: 2025, season_type: "POST", game_id: "2025_19_HOU_KC", passing_yards: 300, ingest_date: "2026-11-19"}
+          - {player_id: "00-0033873", player_display_name: "Patrick Mahomes", position: "QB", team: "KC", week: 1, season: 2025, season_type: "REG", game_id: "2025_01_KC_LAC", passing_yards: 250, ingest_date: "2026-11-12"}
+          - {player_id: "00-0035704", player_display_name: "Puka Nacua", position: "WR", team: "LA", week: 1, season: 2025, season_type: "REG", game_id: "2025_01_HOU_LA", receiving_yards: 91, ingest_date: "2026-11-19"}
+      - input: ref('team_abbr_map')
+        format: csv
+        rows: |
+          feed_abbr,abbr
+          LA,LAR
+    expect:
+      rows:
+        - {player_id: "00-0033873", week: 1, team: "KC", passing_yards: 258}
+        - {player_id: "00-0035704", week: 1, team: "LAR", passing_yards: null}

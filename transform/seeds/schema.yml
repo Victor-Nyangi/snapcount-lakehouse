@@ -1,0 +1,23 @@
+version: 2
+
+seeds:
+  - name: teams
+    description: snapcount's 32 canonical teams (backend/app/data/teams.json).
+    columns:
+      - name: abbr
+        data_tests: [unique, not_null]
+
+  - name: team_abbr_map
+    description: >
+      Feed abbreviation -> canonical abbr, snapcount's ABBR_MAP. Schedules keep the code a
+      team used at kickoff (LA, SD, OAK); player stats are mostly normalised already.
+    columns:
+      - name: feed_abbr
+        data_tests: [unique, not_null]
+      - name: abbr
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('teams')
+                field: abbr

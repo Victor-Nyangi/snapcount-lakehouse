@@ -1,0 +1,99 @@
+version: 2
+
+models:
+  - name: team_season
+    description: >
+      One row per (season, team): regular-season record from final games only. Unplayed
+      and postseason games never count. Every team in a season's REG schedule has a row,
+      even before it has played.
+    data_tests:
+      - unique:
+          name: team_season_one_row_per_season_team
+          arguments:
+            column_name: "cast(season as varchar) || '|' || team"
+    columns:
+      - name: season
+        data_tests: [not_null]
+      - name: team
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('teams')
+                field: abbr
+      - name: wins
+        data_tests: [not_null]
+      - name: losses
+        data_tests: [not_null]
+      - name: ties
+        data_tests: [not_null]
+      - name: points_for
+        data_tests: [not_null]
+      - name: points_against
+        data_tests: [not_null]
+      - name: games_played
+        data_tests: [not_null]
+
+  - name: player_season
+    description: >
+      One row per (season, player_id): regular-season totals of the 13 stat fields, with
+      the player's name, position and team from their latest week that season.
+    data_tests:
+      - unique:
+          name: player_season_one_row_per_season_player
+          arguments:
+            column_name: "cast(season as varchar) || '|' || player_id"
+    columns:
+      - name: season
+        data_tests: [not_null]
+      - name: player_id
+        data_tests: [not_null]
+      - name: player_display_name
+        data_tests: [not_null]
+      - name: team
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('teams')
+                field: abbr
+      - name: games
+        data_tests: [not_null]
+
+unit_tests:
+  - name: team_season_ignores_unplayed_and_postseason
+    model: team_season
+    given:
+      - input: ref('stg_games')
+        rows:
+          - {game_id: "2026_01_BAL_KC", season: 2026, week: 1, game_type: "REG", home_team: "KC", away_team: "BAL", home_score: 24, away_score: 17, status: "final"}
+          - {game_id: "2026_02_DEN_KC", season: 2026, week: 2, game_type: "REG", home_team: "KC", away_team: "DEN", home_score: null, away_score: null, status: "scheduled"}
+          - {game_id: "2026_20_HOU_KC", season: 2026, week: 20, game_type: "DIV", home_team: "KC", away_team: "HOU", home_score: 30, away_score: 10, status: "final"}
+    expect:
+      rows:
+        - {season: 2026, team: "KC", wins: 1, losses: 0, ties: 0, points_for: 24, points_against: 17, games_played: 1}
+        - {season: 2026, team: "BAL", wins: 0, losses: 1, ties: 0, points_for: 17, points_against: 24, games_played: 1}
+        - {season: 2026, team: "DEN", wins: 0, losses: 0, ties: 0, points_for: 0, points_against: 0, games_played: 0}
+
+  - name: team_season_counts_ties
+    model: team_season
+    given:
+      - input: ref('stg_games')
+        rows:
+          - {game_id: "2025_05_GB_DAL", season: 2025, week: 5, game_type: "REG", home_team: "DAL", away_team: "GB", home_score: 40, away_score: 40, status: "final"}
+    expect:
+      rows:
+        - {season: 2025, team: "DAL", wins: 0, losses: 0, ties: 1, games_played: 1}
+        - {season: 2025, team: "GB", wins: 0, losses: 0, ties: 1, games_played: 1}
+
+  - name: player_season_sums_and_takes_latest_team
+    description: A traded player's team and position come from their latest week.
+    model: player_season
+    given:
+      - input: ref('stg_player_weeks')
+        rows:
+          - {player_id: "00-0036000", player_display_name: "Traded Back", position: "RB", team: "NYJ", season: 2025, week: 3, game_id: "g3", carries: 10, rushing_yards: 40, rushing_epa: 1.5}
+          - {player_id: "00-0036000", player_display_name: "Traded Back", position: "RB", team: "PHI", season: 2025, week: 9, game_id: "g9", carries: 12, rushing_yards: 60, rushing_epa: -0.5}
+          - {player_id: "00-0036000", player_display_name: "Traded Back", position: "RB", team: "PHI", season: 2025, week: 10, game_id: "g10", carries: null, rushing_yards: null, rushing_epa: null}
+    expect:
+      rows:
+        - {season: 2025, player_id: "00-0036000", team: "PHI", position: "RB", games: 3, carries: 22, rushing_yards: 100, rushing_epa: 1.0, receptions: 0}

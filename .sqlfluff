@@ -1,0 +1,27 @@
+[sqlfluff]
+dialect = athena
+templater = jinja
+# ST06 would reorder columns; silver keeps the documented interface order instead.
+exclude_rules = ST06
+max_line_length = 100
+# The jinja templater's dbt builtins stub ref/source/var, so linting needs no warehouse.
+
+[sqlfluff:templater:jinja]
+apply_dbt_builtins = True
+
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = 4
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = lower
+
+[sqlfluff:rules:references.keywords]
+# Column names fixed by the nflverse feed and snapcount's schema.
+ignore_words = position,ties

@@ -28,3 +28,14 @@ tf-check: ## terraform fmt/validate/test with a mocked provider (no AWS)
 	terraform -chdir=infra/lake init -backend=false -input=false >/dev/null
 	terraform -chdir=infra/lake validate
 	terraform -chdir=infra/lake test
+
+DBT := uv run dbt
+DBT_ARGS := --project-dir transform --profiles-dir transform
+
+.PHONY: dbt-check
+dbt-check: ## dbt parse + sqlfluff lint (no warehouse connection)
+	LAKE_BUCKET=$${LAKE_BUCKET:-parse-only} $(DBT) parse $(DBT_ARGS)
+	uv run sqlfluff lint transform/models transform/tests --dialect athena
+
+.PHONY: check
+check: lint test-local tf-check dbt-check ## Everything CI runs, locally

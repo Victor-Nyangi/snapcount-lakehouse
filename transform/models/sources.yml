@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: bronze
+    schema: snapcount_lake_bronze
+    description: >
+      Raw nflverse release files, unchanged, one immutable partition per ingest_date.
+      Tables are defined in Terraform (infra/lake/glue.tf) with partition projection.
+    tables:
+      - name: schedules
+        description: nflverse schedules/games.parquet (every season in one file).
+      - name: player_week
+        description: nflverse stats_player/stats_player_week_{season}.parquet.

@@ -1,0 +1,38 @@
+name: snapcount_lake
+version: "0.1.0"
+config-version: 2
+profile: snapcount_lake
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+target-path: target
+clean-targets: ["target", "dbt_packages"]
+
+flags:
+  send_anonymous_usage_stats: false
+
+vars:
+  # The lake's window starts where snapcount's does. Older schedule rows carry team codes
+  # (STL, ...) that are outside snapcount's 32-team table.
+  first_season: 2016
+  # The season the parity seed (seeds/parity_expected_2025.csv) describes.
+  parity_season: 2025
+
+models:
+  snapcount_lake:
+    +materialized: table
+    +table_type: iceberg
+    +format: parquet
+    silver:
+      +schema: silver
+    gold:
+      +schema: gold
+
+seeds:
+  snapcount_lake:
+    +schema: silver
+
+data_tests:
+  snapcount_lake:
+    +store_failures: false

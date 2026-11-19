@@ -21,6 +21,12 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest -q
+      # dbt parse needs the adapter and a profile but no connection; LAKE_BUCKET is a
+      # placeholder because profiles.yml reads it. dbt compile/run would need Athena.
+      - run: uv run dbt parse --project-dir transform --profiles-dir transform
+        env:
+          LAKE_BUCKET: parse-only
+      - run: uv run sqlfluff lint transform/models transform/tests --dialect athena
 
   terraform:
     runs-on: ubuntu-latest

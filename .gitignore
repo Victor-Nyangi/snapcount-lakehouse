@@ -28,3 +28,4 @@ target/
 
 # Local smoke-test output
 .lake-local/
+transform/.user.yml

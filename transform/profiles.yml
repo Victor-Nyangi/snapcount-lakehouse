@@ -1,0 +1,18 @@
+# Read entirely from the environment; `make build` sets these from Terraform outputs.
+# Schemas resolve to snapcount_lake_<layer> (dbt's default <target schema>_<custom schema>),
+# i.e. the Glue databases Terraform creates.
+snapcount_lake:
+  target: dev
+  outputs:
+    dev:
+      type: athena
+      region_name: eu-west-1
+      database: awsdatacatalog
+      schema: snapcount_lake
+      work_group: "{{ env_var('LAKE_WORKGROUP', 'snapcount-lake') }}"
+      s3_staging_dir: "s3://{{ env_var('LAKE_BUCKET') }}/athena-results/"
+      s3_data_dir: "s3://{{ env_var('LAKE_BUCKET') }}/lake/"
+      s3_data_naming: schema_table_unique
+      aws_profile_name: "{{ env_var('AWS_PROFILE', 'snapcount-lake') }}"
+      threads: 4
+      num_retries: 2

@@ -15,6 +15,15 @@ dev = [
     "pytest",
     "ruff",
 ]
+# Pinned exactly: adapter and core move together; bump both deliberately.
+transform = [
+    "dbt-athena-community==1.11.2",
+    "dbt-core==1.12.7",
+    "sqlfluff==4.5.0",
+]
+
+[tool.uv]
+default-groups = ["dev", "transform"]
 
 [build-system]
 requires = ["hatchling"]
