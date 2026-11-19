@@ -46,9 +46,11 @@ results as (
 select
     t.season,
     t.team,
-    count_if(r.points_for > r.points_against) as wins,
-    count_if(r.points_for < r.points_against) as losses,
-    count_if(r.points_for = r.points_against) as ties,
+    -- sum(case ...) rather than count_if: a team with no final game yet has one
+    -- left-joined row of nulls, and this gives 0 for it on any engine.
+    sum(case when r.points_for > r.points_against then 1 else 0 end) as wins,
+    sum(case when r.points_for < r.points_against then 1 else 0 end) as losses,
+    sum(case when r.points_for = r.points_against then 1 else 0 end) as ties,
     coalesce(sum(r.points_for), 0) as points_for,
     coalesce(sum(r.points_against), 0) as points_against,
     count(r.team) as games_played

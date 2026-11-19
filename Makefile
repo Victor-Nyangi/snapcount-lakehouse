@@ -39,3 +39,10 @@ dbt-check: ## dbt parse + sqlfluff lint (no warehouse connection)
 
 .PHONY: check
 check: lint test-local tf-check dbt-check ## Everything CI runs, locally
+
+SNAPCOUNT_DUMP ?= $(HOME)/Bread/Projects/In Progress/snapcount/backfill.sql.gz
+
+.PHONY: parity-seed
+parity-seed: ## Regenerate transform/seeds/parity_expected_$(SEASON).csv from snapcount's dump (read-only)
+	uv run python scripts/parity_from_snapcount.py --dump "$(SNAPCOUNT_DUMP)" --season $(SEASON) \
+		--out transform/seeds/parity_expected_$(SEASON).csv

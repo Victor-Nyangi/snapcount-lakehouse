@@ -33,7 +33,8 @@ build-backend = "hatchling.build"
 packages = ["ingest/lake_ingest"]
 
 [tool.pytest.ini_options]
-testpaths = ["ingest/tests"]
+testpaths = ["ingest/tests", "scripts/tests"]
+pythonpath = ["scripts"]
 addopts = "-ra"
 
 [tool.ruff]
@@ -44,4 +45,4 @@ line-length = 100
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["lake_ingest"]
+known-first-party = ["lake_ingest", "parity_from_snapcount"]
